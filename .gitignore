@@ -1,0 +1,11 @@
+.env
+n8n_data/
+qdrant_data/
+pmo_docs/**/*.pdf
+pmo_docs/**/*.docx
+pmo_docs/.pmo_index.json
+!samples/**
+__pycache__/
+*.pyc
+.pytest_cache/
+pmo-offline-bundle/

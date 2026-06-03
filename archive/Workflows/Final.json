@@ -1,0 +1,543 @@
+{
+  "name": "PMO_Phase3_Risk_Dashboard_Final",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c08a0bd2-1e24-4471-83f4-f6bdf614d732",
+      "name": "Execute Workflow",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2816,
+        -624
+      ]
+    },
+    {
+      "parameters": {
+        "fileSelector": "/data/pmo_docs/*.*",
+        "options": {}
+      },
+      "id": "89e7dbc5-7884-4359-aecf-993fe9f172f6",
+      "name": "Read PMO Docs (v2)",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -2608,
+        -624
+      ],
+      "onError": "continueErrorOutput",
+      "notes": "نود کاملاً جدید و سازگار با نسخه 2.10.4"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "5d1bf207-c93a-4690-ae11-a18d87ed9a20",
+      "name": "Loop Through Files",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -2384,
+        -624
+      ],
+      "notes": "محافظت در برابر OOM"
+    },
+    {
+      "parameters": {
+        "operation": "pdfToText"
+      },
+      "id": "359dd0cc-9df8-4dbd-90db-9155cf152eca",
+      "name": "Extract Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -2160,
+        -624
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  let rawText = $input.item?.json?.text || '';\n  if (!rawText.trim() || rawText.length < 10) {\n    return [{ json: { isValid: false, text: '' } }];\n  }\n  // حفظ فاصله‌ها و حذف کاراکترهای نامرئی که دیتابیس را به هم می‌ریزند\n  let cleanText = rawText.replace(/\\u0000/g, '').replace(/[^\\x20-\\x7E\\u0600-\\u06FF\\s\\n\\r\\t]/g, '').trim();\n  return [{ json: { isValid: true, text: cleanText } }];\n} catch (e) {\n  return [{ json: { isValid: false, text: '' } }];\n}"
+      },
+      "id": "6d3b0d25-013f-4f9e-ae5a-4822e5875306",
+      "name": "Sanitize PDF Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1936,
+        -624
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isValid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "205dd003-d7cb-429b-b913-6a94553327f8",
+      "name": "Is Text Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -1728,
+        -624
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": "pmo_knowledge_base",
+        "options": {}
+      },
+      "id": "e01d987a-4275-44d6-84f7-5db74f67ae11",
+      "name": "Qdrant Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [
+        -1472,
+        -736
+      ]
+    },
+    {
+      "parameters": {
+        "model": "nomic-embed-text-v2",
+        "options": {}
+      },
+      "id": "59db1c91-c9b0-40ff-a3f9-bb6fd6ee6d0d",
+      "name": "Embeddings (Nomic)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -1472,
+        -528
+      ]
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 200,
+        "options": {}
+      },
+      "id": "ac071228-c00a-439b-a67d-b7f2f6b107d5",
+      "name": "Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        -1264,
+        -528
+      ]
+    },
+    {
+      "parameters": {
+        "path": "generate-warning",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "dce9c0f0-c950-45ae-87eb-351c73277c4b",
+      "name": "Webhook API",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        -3056,
+        -320
+      ],
+      "webhookId": "4f165f2d-8bfb-4b3c-a6cf-0ac441e95980"
+    },
+    {
+      "parameters": {
+        "text": "=درخواست کارفرما: نگارش اخطار تاخیر به پیمانکار '${{ $json.query.contractor_name }}' با موضوع '${{ $json.query.delay_subject }}'.\nشما یک هوش مصنوعی Air-Gapped هستید. فقط بر اساس اسناد بازیابی شده عمل کن. اگر سندی نیافتی، کلمه عبور ERROR_NO_DOCS را برگردان.",
+        "options": {}
+      },
+      "id": "406ef5e7-e386-48a9-b13c-bb4c6c1f4204",
+      "name": "Legal AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.2,
+      "position": [
+        -2800,
+        -320
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": "bartowski/gemma-4-26b-it-moe-GGUF",
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "f95d1522-afef-4245-a4b7-f59fa2aaedba",
+      "name": "Gemma 4 26B",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -2800,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "name": "Contract_Database",
+        "description": "جستجوی مفاد قرارداد و سوابق پیمانکار"
+      },
+      "id": "e815b0e1-7fa7-4fc9-a519-35d10fb04dd3",
+      "name": "Vector Store Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1,
+      "position": [
+        -2592,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "qdrantCollection": "pmo_knowledge_base",
+        "options": {}
+      },
+      "id": "14459ace-4427-44cc-999c-f50364bdb945",
+      "name": "Qdrant Retriever",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [
+        -2592,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  if ($input.item?.json?.error) {\n    return [{ json: { status: 'failed', message: 'خطا در ارتباط با موتور پردازشی لوکال' } }];\n  }\n\n  let outputText = String($input.item?.json?.output || '');\n  \n  if (outputText.includes('ERROR_NO_DOCS') || outputText.trim() === '') {\n    return [{ json: { status: 'failed', message: 'هیچ سند حقوقی یافت نشد. پردازش جهت جلوگیری از توهم متوقف گردید.' } }];\n  }\n  \n  // فیلتر تگ‌های دیپ‌سیک/جما/کیوون\n  let cleanLetter = outputText.replace(/<\\|think\\|>[\\s\\S]*?<\\/\\|think\\|>\\s*/gi, '').trim();\n  \n  // تضمین بازگشت Array\n  return [{ json: { status: 'success', letter: cleanLetter } }];\n} catch(e) {\n  return [{ json: { status: 'failed', message: 'خطای سیستمی', details: e.message } }];\n}"
+      },
+      "id": "320a2c60-e319-4f92-9c9f-ec1cd40ae205",
+      "name": "Format & Array Fix",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2400,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "model": "nomic-embed-text-v1.5",
+        "options": {}
+      },
+      "id": "53a00410-33b2-4679-a192-1965bb237e56",
+      "name": "Embeddings (Nomic)1",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -2592,
+        336
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                5
+              ],
+              "triggerAtHour": 16
+            }
+          ]
+        }
+      },
+      "id": "122c7dc0-14a3-43a2-9c1d-51b94cf5b4ca",
+      "name": "Weekly Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2048,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "text": "به عنوان تحلیلگر ریسک ارشد، صورت‌جلسات اخیر را بررسی کن. آیا نشانه‌هایی از Claim یا تاخیر بحرانی وجود دارد؟ خروجی را فقط به صورت Markdown تمیز بده.",
+        "options": {}
+      },
+      "id": "d3372c4d-b3eb-4968-aa69-1fa8a6a22a10",
+      "name": "Risk Analyst Agent (Qwen)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.2,
+      "position": [
+        -1792,
+        -160
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": "bartowski/qwen-3.6-35b-a3b-GGUF",
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "77e6ae57-c310-48e4-9c74-dcf7f0752697",
+      "name": "Qwen 3.6 35B (LM Studio)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        -1792,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const inputItem = $input.item?.json || {};\n  \n  if (inputItem.error) {\n     return [{ json: { htmlReport: '<h2>خطا در سرور AI</h2><p>پردازش مدل با خطا مواجه شد.</p>' } }];\n  }\n\n  let rawOutput = String(inputItem.output || '');\n  rawOutput = rawOutput.replace(/<\\|think\\|>[\\s\\S]*?<\\/\\|think\\|>\\s*/gi, '');\n  \n  if (rawOutput.trim() === '') {\n      rawOutput = 'موردی برای گزارش یافت نشد (خروجی خالی از مدل).';\n  }\n\n  const executionDate = new Date().toLocaleDateString('fa-IR');\n  \n  let formattedHtml = rawOutput\n      .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')\n      .replace(/\\*(.*?)\\*/g, '<em>$1</em>')\n      .replace(/\\n\\s*-\\s+(.*)/g, '<li>$1</li>')\n      .replace(/\\n/g, '<br/>');\n\n  if (formattedHtml.includes('<li>')) {\n      formattedHtml = formattedHtml.replace(/<li>/g, '<ul><li>').replace(/<\\/li><br\\/>/g, '</li></ul>');\n  }\n\n  const dashboardHtml = `\n  <!DOCTYPE html>\n  <html lang=\"fa\" dir=\"rtl\">\n  <head>\n      <meta charset=\"UTF-8\">\n      <style>\n          body { font-family: Tahoma, sans-serif; background: #f4f7f6; color: #333; padding: 20px; }\n          .container { max-width: 800px; margin: auto; background: #fff; padding: 30px; border-radius: 8px; border-top: 5px solid #1a365d; }\n          .header { text-align: center; margin-bottom: 20px; }\n          .alert { background: #fff3cd; color: #856404; padding: 15px; border-right: 4px solid #ffeeba; }\n      </style>\n  </head>\n  <body>\n      <div class=\"container\">\n          <div class=\"header\">\n              <h2>گزارش ریسک هوش مصنوعی (PMO)</h2>\n              <small>تاریخ استخراج: ${executionDate}</small>\n          </div>\n          <div class=\"alert\">\n              ${formattedHtml}\n          </div>\n      </div>\n  </body>\n  </html>`;\n\n  return [{ json: { htmlReport: dashboardHtml } }];\n} catch (e) {\n  return [{ json: { htmlReport: `<h2>خطای سیستمی</h2><p>${e.message}</p>` } }];\n}"
+      },
+      "id": "35444e73-2fca-4abc-9696-8310bad3349b",
+      "name": "Robust HTML Formatter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1488,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "pmo_ai@yourcompany.local",
+        "toEmail": "pmo_manager@yourcompany.local",
+        "subject": "گزارش اتوماتیک ریسک - هوش مصنوعی",
+        "options": {}
+      },
+      "id": "231f278c-76df-4bbd-9b92-59a6b4a8b015",
+      "name": "Send Report",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        -1248,
+        -160
+      ],
+      "webhookId": "46fb8a91-97a2-472d-b55f-9708bfe86a5f",
+      "onError": "continueErrorOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Execute Workflow": {
+      "main": [
+        [
+          {
+            "node": "Read PMO Docs (v2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read PMO Docs (v2)": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Through Files": {
+      "main": [
+        [
+          {
+            "node": "Extract Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text": {
+      "main": [
+        [
+          {
+            "node": "Sanitize PDF Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize PDF Content": {
+      "main": [
+        [
+          {
+            "node": "Is Text Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Text Valid?": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Through Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings (Nomic)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook API": {
+      "main": [
+        [
+          {
+            "node": "Legal AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Legal AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Format & Array Fix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemma 4 26B": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Legal AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vector Store Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Legal AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Retriever": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "Vector Store Tool",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings (Nomic)1": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Retriever",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Weekly Schedule": {
+      "main": [
+        [
+          {
+            "node": "Risk Analyst Agent (Qwen)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qwen 3.6 35B (LM Studio)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Risk Analyst Agent (Qwen)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Risk Analyst Agent (Qwen)": {
+      "main": [
+        [
+          {
+            "node": "Robust HTML Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Robust HTML Formatter": {
+      "main": [
+        [
+          {
+            "node": "Send Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "d9c61c5a-c3bd-44de-a755-e5c8cf006dd5",
+  "meta": {
+    "instanceId": "11ccc08d7db8915850c37430b3cdb548440d4ee73574bc33f8b92b1715c80685"
+  },
+  "id": "BL6hgKE9XkTIE6fI",
+  "tags": []
+}

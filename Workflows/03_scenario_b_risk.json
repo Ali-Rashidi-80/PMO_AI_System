@@ -1,0 +1,51 @@
+{
+  "name": "PMO_03_Scenario_B_Risk",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pmo/risk",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-risk",
+      "name": "Webhook Risk",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "pmo-risk-webhook"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "weeks", "triggerAtDay": [5], "triggerAtHour": 16 }]
+        }
+      },
+      "id": "schedule",
+      "name": "Weekly Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 220]
+    },
+    {
+      "parameters": {
+        "jsCode": "const headers = $input.first().json.headers || {};\nconst token = headers['x-pmo-token'] || headers['X-PMO-Token'] || 'change-me-pmo-secret-2026';\nlet context = '';\nif ($input.first().json.body) {\n  const body = $input.first().json.body;\n  context = body.context || body.prompt || '';\n}\nconst payload = context ? { context } : {};\nconst response = await this.helpers.httpRequest({\n  method: 'POST',\n  url: 'http://lmstudio-gateway:8081/api/pmo/risk/run',\n  headers: {\n    'X-PMO-Token': token,\n    'Content-Type': 'application/json',\n  },\n  body: payload,\n  json: true,\n  timeout: 900000,\n});\nreturn [{ json: response }];"
+      },
+      "id": "gateway-risk",
+      "name": "Gateway Risk",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, 100]
+    }
+  ],
+  "connections": {
+    "Webhook Risk": {
+      "main": [[{ "node": "Gateway Risk", "type": "main", "index": 0 }]]
+    },
+    "Weekly Schedule": {
+      "main": [[{ "node": "Gateway Risk", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" }
+}

@@ -1,0 +1,233 @@
+{
+  "name": "PMO_Phase1_RAG_Ingestion_Final",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trigger-node",
+      "name": "Execute Workflow",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "fileSelector": "/data/pmo_docs/*.*",
+        "options": {}
+      },
+      "id": "read-files-v2",
+      "name": "Read PMO Docs (v2)",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [220, 0],
+      "onError": "continueErrorOutput",
+      "notes": "نود کاملاً جدید و سازگار با نسخه 2.10.4"
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "batching-node",
+      "name": "Loop Through Files",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [440, 0],
+      "notes": "محافظت در برابر OOM"
+    },
+    {
+      "parameters": {
+        "operation": "pdfToText",
+        "binaryPropertyName": "data"
+      },
+      "id": "extract-pdf",
+      "name": "Extract Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [660, 0],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  let rawText = $input.item?.json?.text || '';\n  if (!rawText.trim() || rawText.length < 10) {\n    return [{ json: { isValid: false, text: '' } }];\n  }\n  // حفظ فاصله‌ها و حذف کاراکترهای نامرئی که دیتابیس را به هم می‌ریزند\n  let cleanText = rawText.replace(/\\u0000/g, '').replace(/[^\\x20-\\x7E\\u0600-\\u06FF\\s\\n\\r\\t]/g, '').trim();\n  return [{ json: { isValid: true, text: cleanText } }];\n} catch (e) {\n  return [{ json: { isValid: false, text: '' } }];\n}"
+      },
+      "id": "sanitize-text",
+      "name": "Sanitize PDF Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isValid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-validity",
+      "name": "Is Text Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "qdrantCollection": "pmo_knowledge_base",
+        "options": {}
+      },
+      "id": "qdrant-store",
+      "name": "Qdrant Vector Store",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [1350, -100],
+      "credentials": {
+        "qdrantApi": {
+          "id": "qdrant-cred-1",
+          "name": "Qdrant Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "nomic-embed-text-v1.5"
+      },
+      "id": "embed-model",
+      "name": "Embeddings (Nomic)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [1350, 100],
+      "credentials": {
+        "openAiApi": {
+          "id": "lm-studio-cred",
+          "name": "LM Studio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chunkSize": 1000,
+        "chunkOverlap": 200
+      },
+      "id": "text-splitter",
+      "name": "Text Splitter",
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [1550, 100]
+    }
+  ],
+  "connections": {
+    "Execute Workflow": {
+      "main": [
+        [
+          {
+            "node": "Read PMO Docs (v2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read PMO Docs (v2)": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Through Files": {
+      "main": [
+        [
+          {
+            "node": "Extract Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text": {
+      "main": [
+        [
+          {
+            "node": "Sanitize PDF Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sanitize PDF Content": {
+      "main": [
+        [
+          {
+            "node": "Is Text Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Text Valid?": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Through Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Vector Store": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings (Nomic)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Text Splitter": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Qdrant Vector Store",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}

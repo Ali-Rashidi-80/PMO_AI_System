@@ -1,0 +1,34 @@
+lmstudio:
+  upstream: "http://host.docker.internal:1234"
+  server_start: "lms server start --port 1234 --cors"
+  models_path: "%USERPROFILE%/.lmstudio/models/lmstudio-community"
+
+models:
+  llm:
+    id: "gemma-4-e4b-it-ud"
+    gguf_dir: "gemma-4-E4B-it-UD-Q4_K_XL"
+    scenario_a_temperature: 0.1
+    scenario_b_temperature: 0.3
+  embedding:
+    id: "nomic-embed-text-v2"
+    gguf_dir: "nomic-embed-text-v2"
+    dimensions: 768
+
+ui:
+  public_url: "http://localhost:8080"
+  webhook_secret_env: "WEBHOOK_SECRET"
+
+n8n:
+  internal_url: "http://pmo-n8n:5678"
+  openai_via_gateway: "http://lmstudio-gateway:8081/v1"
+  qdrant: "http://pmo-qdrant:6333"
+  collection: "pmo_knowledge_base"
+
+rag:
+  chunk_size: 1000
+  chunk_overlap: 200
+
+webhooks:
+  letter: "/webhook/pmo/letter"
+  risk: "/webhook/pmo/risk"
+  ingest: "/webhook/pmo/ingest"

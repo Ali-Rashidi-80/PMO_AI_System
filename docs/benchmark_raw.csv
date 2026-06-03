@@ -1,0 +1,4 @@
+scenario,seconds,status,timestamp
+ingest,-1,error: HTTP Error 500: Internal Server Error,2026-05-31T13:59:37.011073
+letter,-1,error: HTTP Error 500: Internal Server Error,2026-05-31T13:59:37.354848
+risk,-1,error: HTTP Error 500: Internal Server Error,2026-05-31T13:59:37.695246

@@ -1,0 +1,20 @@
+{
+  "sample_weekly_report": "weekly_report_sample.txt",
+  "expected_risks": [
+    {
+      "risk_title": "تأخیر در تحویل مصالح فولادی",
+      "severity": "High",
+      "evidence_keywords": ["تأخیر", "مصالح", "فولاد"]
+    },
+    {
+      "risk_title": "عدم رعایت ایمنی کارگاه",
+      "severity": "Medium",
+      "evidence_keywords": ["ایمنی", "کلاه", "حفاظ"]
+    },
+    {
+      "risk_title": "افزایش هزینه پیمانکار فرعی",
+      "severity": "Medium",
+      "evidence_keywords": ["هزینه", "اضافه", "Claim"]
+    }
+  ]
+}

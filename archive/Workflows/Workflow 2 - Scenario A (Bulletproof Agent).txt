@@ -1,0 +1,173 @@
+{
+  "name": "PMO_Phase2_Warning_Letter_Final",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "generate-warning",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-api",
+      "name": "Webhook API",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=درخواست کارفرما: نگارش اخطار تاخیر به پیمانکار '${{ $json.query.contractor_name }}' با موضوع '${{ $json.query.delay_subject }}'.\nشما یک هوش مصنوعی Air-Gapped هستید. فقط بر اساس اسناد بازیابی شده عمل کن. اگر سندی نیافتی، کلمه عبور ERROR_NO_DOCS را برگردان."
+      },
+      "id": "legal-agent",
+      "name": "Legal AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.2,
+      "position": [250, 0],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": "bartowski/gemma-4-26b-it-moe-GGUF",
+        "options": {
+          "temperature": 0.1,
+          "systemMessage": "شما کارشناس حقوقی هستید. هیچ موردی را از خودتان حدس نزنید. نگارش رسمی باشد."
+        }
+      },
+      "id": "gemma-llm",
+      "name": "Gemma 4 26B",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [250, 250],
+      "credentials": {
+        "openAiApi": {
+          "id": "lm-studio-cred",
+          "name": "LM Studio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "name": "Contract_Database",
+        "description": "جستجوی مفاد قرارداد و سوابق پیمانکار"
+      },
+      "id": "vector-tool",
+      "name": "Vector Store Tool",
+      "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+      "typeVersion": 1,
+      "position": [450, 250]
+    },
+    {
+      "parameters": {
+        "qdrantCollection": "pmo_knowledge_base",
+        "options": {}
+      },
+      "id": "qdrant-retriever",
+      "name": "Qdrant Retriever",
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+      "typeVersion": 1,
+      "position": [450, 450],
+      "credentials": {
+        "qdrantApi": {
+          "id": "qdrant-cred-1",
+          "name": "Qdrant Api"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "nomic-embed-text-v1.5"
+      },
+      "id": "nomic-embeddings",
+      "name": "Embeddings (Nomic)",
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1,
+      "position": [450, 650],
+      "credentials": {
+        "openAiApi": {
+          "id": "lm-studio-cred",
+          "name": "LM Studio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  if ($input.item?.json?.error) {\n    return [{ json: { status: 'failed', message: 'خطا در ارتباط با موتور پردازشی لوکال' } }];\n  }\n\n  let outputText = String($input.item?.json?.output || '');\n  \n  if (outputText.includes('ERROR_NO_DOCS') || outputText.trim() === '') {\n    return [{ json: { status: 'failed', message: 'هیچ سند حقوقی یافت نشد. پردازش جهت جلوگیری از توهم متوقف گردید.' } }];\n  }\n  \n  // فیلتر تگ‌های دیپ‌سیک/جما/کیوون\n  let cleanLetter = outputText.replace(/<\\|think\\|>[\\s\\S]*?<\\/\\|think\\|>\\s*/gi, '').trim();\n  \n  // تضمین بازگشت Array\n  return [{ json: { status: 'success', letter: cleanLetter } }];\n} catch(e) {\n  return [{ json: { status: 'failed', message: 'خطای سیستمی', details: e.message } }];\n}"
+      },
+      "id": "format-node",
+      "name": "Format & Array Fix",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 0]
+    }
+  ],
+  "connections": {
+    "Webhook API": {
+      "main": [
+        [
+          {
+            "node": "Legal AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Legal AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Format & Array Fix",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemma 4 26B": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Legal AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vector Store Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "Legal AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Retriever": {
+      "ai_vectorStore": [
+        [
+          {
+            "node": "Vector Store Tool",
+            "type": "ai_vectorStore",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings (Nomic)": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Qdrant Retriever",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {}
+}

@@ -1,0 +1,36 @@
+{
+  "name": "PMO_02_Scenario_A_Letter",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pmo/letter",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-letter",
+      "name": "Webhook Letter",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "webhookId": "pmo-letter-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const headers = $input.first().json.headers || {};\n  const token = headers['x-pmo-token'] || headers['X-PMO-Token'] || '';\n  const secret = 'change-me-pmo-secret-2026';\n  if (token !== secret) {\n    return [{ json: { status: 'failed', message: 'توکن نامعتبر' } }];\n  }\n  const body = $input.first().json.body || $input.first().json;\n  const payload = {\n    contractor_name: body.contractor_name || '',\n    delay_subject: body.delay_subject || body.subject || '',\n    extra_context: body.extra_context || '',\n    free_prompt: body.free_prompt || '',\n  };\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'http://lmstudio-gateway:8081/api/pmo/letter',\n    headers: {\n      'X-PMO-Token': secret,\n      'Content-Type': 'application/json',\n    },\n    body: payload,\n    json: true,\n    timeout: 900000,\n    ignoreHttpStatusErrors: true,\n  });\n  return [{ json: response }];\n} catch (e) {\n  return [{ json: { status: 'failed', message: e.message || String(e) } }];\n}"
+      },
+      "id": "gateway-letter",
+      "name": "Gateway Letter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [280, 0]
+    }
+  ],
+  "connections": {
+    "Webhook Letter": {
+      "main": [[{ "node": "Gateway Letter", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": true,
+  "settings": { "executionOrder": "v1" }
+}

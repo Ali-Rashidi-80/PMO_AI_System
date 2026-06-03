@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>دستیار PMO — هوش مصنوعی محلی</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <div id="toastHost" class="toast-host" aria-live="polite"></div>
+
+  <!-- راهنمای اولین ورود -->
+  <div id="welcomeBanner" class="welcome-banner" hidden>
+    <div class="welcome-inner">
+      <div>
+        <strong>خوش آمدید!</strong>
+        <span>از تب «دستیار هوشمند» شروع کنید — هر سوالی دارید بپرسید. برای نامه و ریسک، تب‌های مخصوص را بزنید.</span>
+      </div>
+      <button type="button" id="dismissWelcome" class="btn-text">متوجه شدم</button>
+    </div>
+  </div>
+
+  <header class="app-header">
+    <div class="header-start">
+      <div class="logo" aria-hidden="true">◆</div>
+      <div>
+        <h1 class="app-title">دستیار PMO</h1>
+        <p class="app-subtitle">هوش مصنوعی محلی · بدون اینترنت</p>
+      </div>
+    </div>
+    <div id="readinessChip" class="readiness-chip warn" role="status">
+      <span class="dot"></span>
+      <span id="readinessText">در حال بررسی...</span>
+    </div>
+    <div id="serviceStrip" class="service-strip" aria-label="وضعیت سرویس‌ها">
+      <span id="svcLm" class="svc-pill unknown" title="LM Studio"><span class="dot"></span>LM</span>
+      <span id="svcQd" class="svc-pill unknown" title="Qdrant / RAG"><span class="dot"></span>RAG</span>
+      <span id="svcN8n" class="svc-pill unknown" title="n8n"><span class="dot"></span>n8n</span>
+    </div>
+    <div class="header-actions">
+      <button type="button" id="btnTheme" class="btn-icon" title="تم روشن/تاریک" aria-label="تغییر تم">☀</button>
+      <button type="button" id="btnHelp" class="btn-icon" title="راهنما" aria-label="راهنما">؟</button>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <nav class="side-nav" aria-label="منوی اصلی">
+      <button type="button" class="nav-item active" data-tab="chat">
+        <span class="nav-icon">💬</span>
+        <span class="nav-label">دستیار هوشمند</span>
+        <span class="nav-desc">هر سوال یا درخواست</span>
+        <span class="nav-badge unknown" id="navBadgeChat" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="nav-item" data-tab="letter">
+        <span class="nav-icon">✉️</span>
+        <span class="nav-label">نامه رسمی</span>
+        <span class="nav-desc">اخطار و مکاتبات</span>
+        <span class="nav-badge unknown" id="navBadgeLetter" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="nav-item" data-tab="risk">
+        <span class="nav-icon">⚠️</span>
+        <span class="nav-label">تحلیل ریسک</span>
+        <span class="nav-desc">گزارش هفتگی پروژه</span>
+        <span class="nav-badge unknown" id="navBadgeRisk" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="nav-item" data-tab="docs">
+        <span class="nav-icon">📁</span>
+        <span class="nav-label">پایگاه اسناد</span>
+        <span class="nav-desc">حافظه قراردادها</span>
+        <span class="nav-badge unknown" id="navBadgeDocs" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="nav-item" data-tab="settings">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-label">تنظیمات</span>
+        <span class="nav-desc">وضعیت و اتوماسیون</span>
+        <span class="nav-badge unknown" id="navBadgeSettings" aria-hidden="true"></span>
+      </button>
+    </nav>
+
+    <main class="main-content">
+
+      <!-- ═══ دستیار هوشمند ═══ -->
+      <section id="panel-chat" class="view active">
+        <header class="view-header">
+          <h2>دستیار هوشمند</h2>
+          <p>سوال بپرسید، متن بنویسید، خلاصه بگیرید — مثل یک همکار متخصص PMO</p>
+        </header>
+
+        <div class="panel-monitor" id="chatMonitor" role="status" aria-live="polite">
+          <span class="mon-pill" id="chatMonLm"><span class="dot"></span><span id="chatMonLmText">مدل: در حال بررسی...</span></span>
+          <span class="mon-pill" id="chatMonRag"><span class="dot"></span><span id="chatMonRagText">RAG: —</span></span>
+          <span class="mon-pill muted" id="chatMonStream"><span id="chatMonStreamText">حالت: تدریجی</span></span>
+        </div>
+
+        <div class="suggestions" id="chatSuggestions">
+          <span class="suggestions-label">پیشنهاد سریع:</span>
+          <button type="button" class="chip" data-prompt="وضعیت کلی پروژه را در دو پارagraph خلاصه کن">خلاصه پروژه</button>
+          <button type="button" class="chip" data-prompt="ریسک‌های احتمالی تأخیر پیمانکار را فهرست کن">ریسک تأخیر</button>
+          <button type="button" class="chip" data-prompt="یک چک‌لیست جلسه SteerCo برای مدیر پروژه بنویس">چک‌لیست جلسه</button>
+          <button type="button" class="chip" data-prompt="متن زیر را رسمی‌تر کن:">رسمی‌سازی متن</button>
+        </div>
+
+        <div class="composer">
+          <label for="chatPrompt" class="sr-only">متن درخواست</label>
+          <textarea id="chatPrompt" rows="4" placeholder="مثلاً: گزارش هفته گذشته را خلاصه کن و سه اقدام فوری پیشنهاد بده..."></textarea>
+          <div class="composer-bar">
+            <label class="toggle-pill">
+              <input id="chatRag" type="checkbox">
+              <span>استفاده از اسناد پروژه</span>
+            </label>
+            <label class="toggle-pill">
+              <input id="chatStream" type="checkbox" checked>
+              <span>نمایش تدریجی پاسخ</span>
+            </label>
+            <span class="kbd-hint">Ctrl+Enter = ارسال</span>
+            <button type="button" id="btnChat" class="btn-main">
+              <span id="btnChatLabel">ارسال درخواست</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="loadingChat" class="loading-card" hidden>
+          <div class="skeleton-lines"><span></span><span></span><span></span></div>
+          <p>در حال فکر کردن... (ممکن است ۱ تا ۵ دقیقه طول بکشد)</p>
+          <button type="button" id="btnStopChat" class="btn-text danger">توقف</button>
+        </div>
+
+        <div class="result-card">
+          <div class="result-toolbar">
+            <h3>پاسخ</h3>
+            <div class="toolbar-actions">
+              <button type="button" id="copyChat" class="btn-small" disabled>کپی</button>
+              <button type="button" id="clearChat" class="btn-small">پاک کردن</button>
+            </div>
+          </div>
+          <div id="outChat" class="result-body empty-state" data-empty="هنوز پاسخی نیست — درخواست خود را بالا بنویسید و «ارسال» بزنید."></div>
+          <p id="chatMeta" class="field-hint" hidden></p>
+          <p id="errChat" class="alert alert-error" hidden></p>
+        </div>
+
+        <details class="pro-panel">
+          <summary>تنظیمات پیشرفته (اختیاری)</summary>
+          <label for="chatSystem">نقش دستیار</label>
+          <textarea id="chatSystem" rows="2" placeholder="مثلاً: شما مشاور PMO با لحن رسمی هستید"></textarea>
+          <label for="chatTemp">میزان خلاقیت پاسخ</label>
+          <input id="chatTemp" type="range" min="0" max="100" value="30">
+          <div class="range-labels"><span>دقیق</span><span>خلاق</span></div>
+        </details>
+      </section>
+
+      <!-- ═══ نامه ═══ -->
+      <section id="panel-letter" class="view">
+        <header class="view-header">
+          <h2>نگارش نامه رسمی</h2>
+          <p>اطلاعات را پر کنید — سیستم نامه اخطار یا مکاتبه رسمی پیش‌نویس می‌کند</p>
+        </header>
+
+        <div class="panel-monitor" id="letterMonitor" role="status">
+          <span class="mon-pill" id="letterMonLm"><span class="dot"></span><span id="letterMonLmText">مدل: در حال بررسی...</span></span>
+          <span class="mon-pill muted" id="letterMonHint"><span id="letterMonHintText">نیاز به LM Studio فعال</span></span>
+        </div>
+
+        <div class="steps-hint">
+          <span class="step active">۱. اطلاعات</span>
+          <span class="step-arrow">←</span>
+          <span class="step">۲. تولید</span>
+          <span class="step-arrow">←</span>
+          <span class="step">۳. دانلود</span>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="letterContractor">نام پیمانکار / طرف قرارداد</label>
+            <input id="letterContractor" type="text" placeholder="مثال: شرکت سازه‌گستر پارس">
+          </div>
+          <div class="field">
+            <label for="letterSubject">موضوع (تأخیر، تخلف، ...) </label>
+            <input id="letterSubject" type="text" placeholder="مثال: تأخیر ۳۰ روزه در تحویل فاز ۲">
+          </div>
+          <div class="field full">
+            <label for="letterExtra">جزئیات تکمیلی <span class="optional">اختیاری</span></label>
+            <textarea id="letterExtra" rows="3" placeholder="شماره قرارداد، تاریخ‌ها، بندهای مرتبط..."></textarea>
+          </div>
+        </div>
+
+        <details class="pro-panel">
+          <summary>یا با دستور آزاد بنویسید</summary>
+          <textarea id="letterFree" rows="3" placeholder="مثال: نامه اخطار رسمی به پیمانکار X بابت عدم تحویل تجهیزات تا تاریخ ..."></textarea>
+        </details>
+
+        <button type="button" id="btnLetter" class="btn-main">تولید نامه</button>
+        <div id="spinnerLetter" class="inline-status" hidden>در حال نگارش نامه — لطفاً صبر کنید...</div>
+
+        <div class="result-card">
+          <div class="result-toolbar">
+            <h3>پیش‌نویس نامه</h3>
+            <div class="toolbar-actions">
+              <button type="button" id="copyLetter" class="btn-small" disabled>کپی متن</button>
+              <button type="button" id="dlLetter" class="btn-small" disabled>دانلود Word</button>
+            </div>
+          </div>
+          <div id="outLetter" class="result-body empty-state" data-empty="پس از تولید، متن نامه اینجا نمایش داده می‌شود."></div>
+          <p id="errLetter" class="alert alert-error" hidden></p>
+        </div>
+      </section>
+
+      <!-- ═══ ریسک ═══ -->
+      <section id="panel-risk" class="view">
+        <header class="view-header">
+          <h2>تحلیل ریسک پروژه</h2>
+          <p>گزارش‌های هفتگی پروژه را می‌خواند و ریسک‌ها را با اولویت نشان می‌دهد</p>
+        </header>
+
+        <div class="panel-monitor" id="riskMonitor" role="status">
+          <span class="mon-pill" id="riskMonLm"><span class="dot"></span><span id="riskMonLmText">مدل: در حال بررسی...</span></span>
+          <span class="mon-pill" id="riskMonDocs"><span class="dot"></span><span id="riskMonDocsText">اسناد پروژه: —</span></span>
+        </div>
+
+        <div class="info-banner">
+          <span>📋</span>
+          <p>گزارش‌های ذخیره‌شده در پوشه پروژه به‌صورت خودکار خوانده می‌شوند. می‌توانید توضیح اضافه هم بنویسید.</p>
+        </div>
+
+        <label for="riskContext">توضیح یا گزارش اضافه <span class="optional">اختیاری</span></label>
+        <textarea id="riskContext" rows="4" placeholder="نگرانی‌های این هفته، تأخیرها، مشکلات تأمین..."></textarea>
+
+        <button type="button" id="btnRisk" class="btn-main">شروع تحلیل ریسک</button>
+        <div id="spinnerRisk" class="inline-status" hidden>در حال تحلیل — چند دقیقه زمان می‌برد...</div>
+
+        <div class="result-card">
+          <div class="result-toolbar">
+            <h3>نتیجه تحلیل</h3>
+            <div class="toolbar-actions">
+              <button type="button" id="viewRiskHtml" class="btn-small" disabled>مشاهده گزارش</button>
+              <button type="button" id="copyRisk" class="btn-small" disabled>کپی</button>
+            </div>
+          </div>
+          <div id="outRisk" class="result-body empty-state" data-empty="جدول ریسک‌ها پس از تحلیل اینجا ظاهر می‌شود."></div>
+          <p id="errRisk" class="alert alert-error" hidden></p>
+        </div>
+      </section>
+
+      <!-- ═══ اسناد ═══ -->
+      <section id="panel-docs" class="view">
+        <header class="view-header">
+          <h2>پایگاه اسناد پروژه</h2>
+          <p>اسناد را آپلود کنید یا پوشه را به‌روزرسانی کنید — دستیار از آن‌ها در پاسخ‌ها استفاده می‌کند</p>
+        </header>
+
+        <div class="panel-monitor" id="docsMonitor" role="status">
+          <span class="mon-pill" id="docsMonQd"><span class="dot"></span><span id="docsMonQdText">Qdrant: —</span></span>
+          <span class="mon-pill" id="docsMonEmbed"><span class="dot"></span><span id="docsMonEmbedText">Embedding: —</span></span>
+          <span class="mon-pill muted" id="docsMonIngest"><span id="docsMonIngestText">آخرین ingest: —</span></span>
+        </div>
+
+        <div class="stats-row" id="docsStatsRow" aria-label="آمار اسناد">
+          <div class="stat-chip"><strong id="statTotal">0</strong><span>کل</span></div>
+          <div class="stat-chip ok"><strong id="statIndexed">0</strong><span>ایندکس</span></div>
+          <div class="stat-chip warn"><strong id="statPending">0</strong><span>در انتظار</span></div>
+          <div class="stat-chip"><strong id="statChunks">0</strong><span>بخش RAG</span></div>
+        </div>
+
+        <div class="format-badge" id="formatBadge">در حال بارگذاری فرمت‌های پشتیبانی‌شده...</div>
+
+        <div id="dropZone" class="drop-zone" tabindex="0" aria-label="منطقه آپلود فایل — بکشید یا کلیک کنید">
+          <p>فایل را اینجا رها کنید یا <label for="fileInput" class="link-like">انتخاب فایل</label></p>
+          <input type="file" id="fileInput" multiple hidden
+            accept=".txt,.docx,.pdf,.md,.csv,.json,.log,.text">
+        </div>
+        <div id="uploadProgress" class="inline-status" hidden></div>
+
+        <div class="docs-table-wrap">
+          <table id="docsTable" class="docs-table" aria-label="لیست اسناد">
+            <thead>
+              <tr><th>نام</th><th>نوع</th><th>وضعیت</th><th>بخش‌ها</th><th></th></tr>
+            </thead>
+            <tbody id="docsTableBody"></tbody>
+          </table>
+        </div>
+
+        <div class="help-card embed-hint" id="embedHint">
+          <strong>قبل از ingest:</strong> در LM Studio مدل embedding را Load کنید، سپس Start Server.
+        </div>
+
+        <button type="button" id="btnIngest" class="btn-main">به‌روزرسانی همه اسناد</button>
+        <div id="spinnerIngest" class="inline-status" hidden>در حال خواندن و ذخیره اسناد...</div>
+
+        <div id="ingestResult" class="success-card" hidden>
+          <strong id="ingestTitle">به‌روزرسانی موفق</strong>
+          <p id="ingestDetail"></p>
+        </div>
+        <p id="errIngest" class="alert alert-error" hidden></p>
+      </section>
+
+      <!-- ═══ تنظیمات ═══ -->
+      <section id="panel-settings" class="view">
+        <header class="view-header">
+          <h2>تنظیمات و وضعیت</h2>
+          <p>بررسی سلامت سیستم — معمولاً نیازی به تغییر ندارید</p>
+        </header>
+
+        <div class="status-grid">
+          <div class="status-card" id="cardLm">
+            <span class="status-icon">🤖</span>
+            <div>
+              <strong>موتور هوش مصنوعی</strong>
+              <p id="lmStatus">در حال بررسی...</p>
+            </div>
+          </div>
+          <div class="status-card" id="cardDocs">
+            <span class="status-icon">📚</span>
+            <div>
+              <strong>حافظه اسناد</strong>
+              <p id="qdStatus">در حال بررسی...</p>
+            </div>
+          </div>
+          <div class="status-card" id="cardAuto">
+            <span class="status-icon">🔄</span>
+            <div>
+              <strong>اتوماسیون (n8n)</strong>
+              <p id="n8nStatus">در حال بررسی...</p>
+            </div>
+          </div>
+          <div class="status-card ok" id="cardGateway">
+            <span class="status-icon">🌐</span>
+            <div>
+              <strong>Gateway API</strong>
+              <p id="gwStatus">در حال بررسی...</p>
+            </div>
+          </div>
+          <div class="status-card" id="cardAuth">
+            <span class="status-icon">🔑</span>
+            <div>
+              <strong>کلید دسترسی</strong>
+              <p id="authStatus">در حال بررسی...</p>
+            </div>
+          </div>
+        </div>
+
+        <p id="statusMeta" class="status-meta">آخرین بررسی: —</p>
+
+        <details class="pro-panel monitor-panel" id="monitorDetailPanel">
+          <summary>جزئیات مانیتورینگ سیستم</summary>
+          <table class="monitor-table" id="monitorTable" aria-label="جدول وضعیت سرویس‌ها">
+            <thead>
+              <tr><th>بخش</th><th>وضعیت</th><th>جزئیات</th></tr>
+            </thead>
+            <tbody id="monitorTableBody">
+              <tr><td colspan="3" class="field-hint">در حال بارگذاری...</td></tr>
+            </tbody>
+          </table>
+          <ul class="monitor-config" id="monitorConfigList"></ul>
+        </details>
+
+        <div class="field">
+          <label for="tokenInput">کلید دسترسی</label>
+          <input id="tokenInput" type="password" placeholder="معمولاً نیازی به تغییر نیست">
+          <p class="field-hint">فقط اگر مدیر سیستم کلید جدید داده، اینجا وارد کنید.</p>
+        </div>
+
+        <button type="button" id="refreshStatus" class="btn-secondary">بروزرسانی وضعیت</button>
+        <button type="button" id="btnRestartTour" class="btn-secondary btn-restart-tour">شروع مجدد راهنمای تعاملی</button>
+
+        <details class="pro-panel">
+          <summary>اتوماسیون پیشرفته (برای مدیر فنی)</summary>
+          <p class="field-hint">این بخش برای زمان‌بندی خودکار و webhook است — کاربر عادی نیازی ندارد.</p>
+          <div class="n8n-actions">
+            <button type="button" id="btnN8nIngest" class="btn-secondary">تست: به‌روزرسانی اسناد</button>
+            <button type="button" id="btnN8nLetter" class="btn-secondary">تست: نامه</button>
+            <button type="button" id="btnN8nRisk" class="btn-secondary">تست: ریسک</button>
+          </div>
+          <pre id="outN8n" class="log-box"></pre>
+          <p id="errN8n" class="alert alert-error" hidden></p>
+          <div id="spinnerN8n" class="inline-status" hidden>در حال اجرا...</div>
+        </details>
+
+        <div class="help-card">
+          <h3>راهنمای سریع</h3>
+          <ul>
+            <li><strong>دستیار هوشمند</strong> — هر سوالی بپرسید؛ ساده‌ترین راه شروع کار</li>
+            <li><strong>نامه رسمی</strong> — برای اخطار پیمانکار و مکاتبات</li>
+            <li><strong>تحلیل ریسک</strong> — از گزارش هفتگی، جدول ریسک می‌سازد</li>
+            <li><strong>پایگاه اسناد</strong> — بعد از کپی فایل‌ها، یک‌بار «به‌روزرسانی» بزنید</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- مودال راهنما -->
+  <dialog id="helpModal" class="modal">
+    <div class="modal-head">
+      <h2>چطور کار می‌کند؟</h2>
+      <button type="button" id="closeHelp" class="btn-icon" aria-label="بستن">✕</button>
+    </div>
+    <div class="modal-body">
+      <p>این برنامه روی کامپیوتر شما اجرا می‌شود و به اینترنت نیاز ندارد.</p>
+      <ol>
+        <li>مطمئن شوید <strong>LM Studio</strong> روشن است (نشان سبز در بالای صفحه).</li>
+        <li>از <strong>دستیار هوشمند</strong> برای هر سوال استفاده کنید.</li>
+        <li>برای پاسخ‌های دقیق‌تر، اسناد را در پایگاه اسناد به‌روز کنید.</li>
+        <li>پاسخ‌ها ممکن است چند دقیقه طول بکشد — طبیعی است.</li>
+      </ol>
+      <p class="field-hint">اگر نشان قرمز دیدید، LM Studio را باز کنید و مدل را Load کنید.</p>
+    </div>
+  </dialog>
+
+  <!-- راهنمای تعاملی -->
+  <div id="tourOverlay" class="tour-overlay" hidden>
+    <div id="tourBackdrop" class="tour-backdrop"></div>
+    <div id="tourSpotlight" class="tour-spotlight"></div>
+    <div id="tourCard" class="tour-card" role="dialog" aria-labelledby="tourTitle">
+      <div class="tour-progress"><span id="tourStepNum">۱</span> از <span id="tourStepTotal">۴</span></div>
+      <h3 id="tourTitle">خوش آمدید</h3>
+      <p id="tourBody"></p>
+      <div class="tour-actions">
+        <button type="button" id="tourSkip" class="btn-text">رد کردن</button>
+        <button type="button" id="tourNext" class="btn-main tour-next-btn">بعدی</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

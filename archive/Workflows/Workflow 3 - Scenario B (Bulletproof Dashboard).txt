@@ -1,0 +1,128 @@
+{
+  "name": "PMO_Phase3_Risk_Dashboard_Final",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                5
+              ],
+              "triggerAtHour": 16
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Weekly Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "به عنوان تحلیلگر ریسک ارشد، صورت‌جلسات اخیر را بررسی کن. آیا نشانه‌هایی از Claim یا تاخیر بحرانی وجود دارد؟ خروجی را فقط به صورت Markdown تمیز بده."
+      },
+      "id": "risk-agent",
+      "name": "Risk Analyst Agent (Qwen)",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.2,
+      "position": [250, 0],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": "bartowski/qwen-3.6-35b-a3b-GGUF",
+        "options": {
+          "temperature": 0.3
+        }
+      },
+      "id": "qwen-llm",
+      "name": "Qwen 3.6 35B (LM Studio)",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [250, 250],
+      "credentials": {
+        "openAiApi": {
+          "id": "lm-studio-cred",
+          "name": "LM Studio"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "try {\n  const inputItem = $input.item?.json || {};\n  \n  if (inputItem.error) {\n     return [{ json: { htmlReport: '<h2>خطا در سرور AI</h2><p>پردازش مدل با خطا مواجه شد.</p>' } }];\n  }\n\n  let rawOutput = String(inputItem.output || '');\n  rawOutput = rawOutput.replace(/<\\|think\\|>[\\s\\S]*?<\\/\\|think\\|>\\s*/gi, '');\n  \n  if (rawOutput.trim() === '') {\n      rawOutput = 'موردی برای گزارش یافت نشد (خروجی خالی از مدل).';\n  }\n\n  const executionDate = new Date().toLocaleDateString('fa-IR');\n  \n  let formattedHtml = rawOutput\n      .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')\n      .replace(/\\*(.*?)\\*/g, '<em>$1</em>')\n      .replace(/\\n\\s*-\\s+(.*)/g, '<li>$1</li>')\n      .replace(/\\n/g, '<br/>');\n\n  if (formattedHtml.includes('<li>')) {\n      formattedHtml = formattedHtml.replace(/<li>/g, '<ul><li>').replace(/<\\/li><br\\/>/g, '</li></ul>');\n  }\n\n  const dashboardHtml = `\n  <!DOCTYPE html>\n  <html lang=\"fa\" dir=\"rtl\">\n  <head>\n      <meta charset=\"UTF-8\">\n      <style>\n          body { font-family: Tahoma, sans-serif; background: #f4f7f6; color: #333; padding: 20px; }\n          .container { max-width: 800px; margin: auto; background: #fff; padding: 30px; border-radius: 8px; border-top: 5px solid #1a365d; }\n          .header { text-align: center; margin-bottom: 20px; }\n          .alert { background: #fff3cd; color: #856404; padding: 15px; border-right: 4px solid #ffeeba; }\n      </style>\n  </head>\n  <body>\n      <div class=\"container\">\n          <div class=\"header\">\n              <h2>گزارش ریسک هوش مصنوعی (PMO)</h2>\n              <small>تاریخ استخراج: ${executionDate}</small>\n          </div>\n          <div class=\"alert\">\n              ${formattedHtml}\n          </div>\n      </div>\n  </body>\n  </html>`;\n\n  return [{ json: { htmlReport: dashboardHtml } }];\n} catch (e) {\n  return [{ json: { htmlReport: `<h2>خطای سیستمی</h2><p>${e.message}</p>` } }];\n}"
+      },
+      "id": "html-formatter",
+      "name": "Robust HTML Formatter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [550, 0]
+    },
+    {
+      "parameters": {
+        "fromEmail": "pmo_ai@yourcompany.local",
+        "toEmail": "pmo_manager@yourcompany.local",
+        "subject": "گزارش اتوماتیک ریسک - هوش مصنوعی",
+        "html": "={{ $json.htmlReport }}"
+      },
+      "id": "send-email",
+      "name": "Send Report",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [800, 0],
+      "onError": "continueErrorOutput"
+    }
+  ],
+  "connections": {
+    "Weekly Schedule": {
+      "main": [
+        [
+          {
+            "node": "Risk Analyst Agent (Qwen)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qwen 3.6 35B (LM Studio)": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Risk Analyst Agent (Qwen)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Risk Analyst Agent (Qwen)": {
+      "main": [
+        [
+          {
+            "node": "Robust HTML Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Robust HTML Formatter": {
+      "main": [
+        [
+          {
+            "node": "Send Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {}
+}

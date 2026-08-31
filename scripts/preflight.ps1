@@ -13,7 +13,7 @@ function Test-Step($name, [scriptblock]$block) {
         Write-Host "[PASS] $name" -ForegroundColor Green
         return $true
     } catch {
-        Write-Host "[FAIL] $name — $_" -ForegroundColor Red
+        Write-Host "[FAIL] $name - $_" -ForegroundColor Red
         return $false
     }
 }
@@ -50,14 +50,14 @@ $results += Test-Step "Gateway health (if up)" {
     try {
         Invoke-RestMethod -Uri "http://localhost:8081/health" -TimeoutSec 3 | Out-Null
     } catch {
-        Write-Host "  (gateway not running — skip)" -ForegroundColor Yellow
+        Write-Host "  (gateway not running - skip)" -ForegroundColor Yellow
     }
 }
 $results += Test-Step "UI entry (if up)" {
     try {
         Invoke-WebRequest -Uri "http://localhost:8080/" -TimeoutSec 3 -UseBasicParsing | Out-Null
     } catch {
-        Write-Host "  (stack not running — skip)" -ForegroundColor Yellow
+        Write-Host "  (stack not running - skip)" -ForegroundColor Yellow
     }
 }
 

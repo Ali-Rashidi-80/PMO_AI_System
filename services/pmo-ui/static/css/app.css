@@ -43,7 +43,7 @@
 [data-theme="light"] .toast.err { color: #991b1b; }
 [data-theme="light"] .readiness-chip.ok { color: #065f46; }
 [data-theme="light"] .btn-main { color: #fff; }
-[data-theme="light"] .logo { color: #fff; }
+[data-theme="light"] .logo { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12); }
 [data-theme="light"] .sev-high { color: #b91c1c; }
 [data-theme="light"] .sev-medium { color: #a16207; }
 [data-theme="light"] .sev-low { color: #047857; }
@@ -144,12 +144,9 @@ body {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--accent), #059669);
-  display: grid;
-  place-items: center;
-  font-size: 1.2rem;
-  color: #052e16;
-  font-weight: 800;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 .app-title { margin: 0; font-size: 1.15rem; font-weight: 800; }

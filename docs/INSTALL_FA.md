@@ -1,5 +1,7 @@
 # PMO AI — Installation Guide (Persian)
 
+[English](../INSTALL.md) · **فارسی**
+
 ## پیش‌نیاز
 
 - Windows 10/11 + WSL2 + Docker Desktop

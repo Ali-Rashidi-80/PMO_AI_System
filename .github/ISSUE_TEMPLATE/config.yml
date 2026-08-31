@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Ali-Rashidi-80/PMO_AI_System/blob/main/SECURITY.md
+    about: Report security issues privately — do not open public issues.
+  - name: Documentation
+    url: https://github.com/Ali-Rashidi-80/PMO_AI_System/blob/main/docs/README.md
+    about: Docs hub — install, architecture, test matrix.

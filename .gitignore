@@ -1,11 +1,68 @@
+# ── Secrets & local config ────────────────────────────────────────────────────
 .env
+.env.local
+.env.*.local
+
+# ── Runtime data (Docker volumes / bind mounts) ─────────────────────────────
 n8n_data/
 qdrant_data/
 pmo_docs/**/*.pdf
 pmo_docs/**/*.docx
 pmo_docs/.pmo_index.json
 !samples/**
+
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+
+# ── Test artifacts ────────────────────────────────────────────────────────────
 .pytest_cache/
+.coverage
+htmlcov/
+tests/playwright/node_modules/
+tests/playwright/test-results/
+tests/playwright/playwright-report/
+tests/playwright/blob-report/
+tests/fixtures/documents/*.docx
+tests/fixtures/documents/*.pdf
+
+# ── Generated benchmarks (re-run scripts/benchmark_pmo.py) ────────────────────
+docs/benchmark_raw.csv
+docs/benchmark_results.md
+
+# ── Offline bundle & image exports ────────────────────────────────────────────
 pmo-offline-bundle/
+*.tar
+*.tar.gz
+
+# ── IDE / agent scratch ───────────────────────────────────────────────────────
+.cursor/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── OS & logs ─────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+
+# ── Legacy / stray ────────────────────────────────────────────────────────────
+0/
+archive/0/
